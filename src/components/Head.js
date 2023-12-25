@@ -1,16 +1,25 @@
 import React, { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { toggleMenu } from "../utils/appSlice";
 import { YOUTUBE_SEARCH_API } from "../utils/constants";
+import { cachedResults } from "../utils/searchSlice";
 
 const Head = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  const searchCache = useSelector((store) => store.search);
+
   useEffect(() => {
     /** make an API call after every key press. But if the difference between 2 API Calls is <200 ms decline the API call. */
-    const timer = setTimeout(() => getSearchSuggestions(), 200);
+    const timer = setTimeout(() => {
+      if (searchCache[searchQuery]) {
+        setSuggestions(searchCache[searchQuery]);
+      } else {
+        getSearchSuggestions();
+      }
+    }, 200);
     return () => {
       clearTimeout(timer);
     };
@@ -40,6 +49,12 @@ const Head = () => {
     const data = await fetch(YOUTUBE_SEARCH_API + searchQuery);
     const json = await data.json();
     setSuggestions(json[1]);
+    // update cache
+    dispatch(
+      cachedResults({
+        [searchQuery]: json[1],
+      })
+    );
   };
   return (
     <div className="grid grid-flow-col m-2 p-5 shadow-lg">
